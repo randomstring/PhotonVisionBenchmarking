@@ -79,8 +79,6 @@ public final class DrivetrainConstants {
    * standard module using Falcon500s to drive.
    */
 
-  // FIXME: determine maximum velocities empirically
-
   /**
    * The maximum velocity of the robot in meters per second.
    *
@@ -101,7 +99,6 @@ public final class DrivetrainConstants {
   public static final double MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND =
       MAX_VELOCITY_METERS_PER_SECOND / Math.hypot(TRACKWIDTH_METERS / 2.0, WHEELBASE_METERS / 2.0);
 
-  // TODO: find actual max angular acceleration
   public static final double MAX_ANGULAR_ACCELERATION_RADIANS_PER_SECOND_SQUARED =
       MAX_ANGULAR_VELOCITY_RADIANS_PER_SECOND;
 
@@ -118,8 +115,6 @@ public final class DrivetrainConstants {
   public static final double AUTO_TEST_MAX_ACCELERATION_METERS_PER_SECOND_SQUARED = 0.2;
   public static final double AUTO_TEST_MAX_ANGULAR_SPEED_RADIANS_PER_SECOND = 0.2 * Math.PI;
   public static final double AUTO_TEST_MAX_ANGULAR_SPEED_RADIANS_PER_SECOND_SQUARED = 0.2 * Math.PI;
-
-  // FIXME: tune PID values for auto paths
 
   public static final double AUTO_DRIVE_P_CONTROLLER = 2.2941;
   public static final double AUTO_DRIVE_I_CONTROLLER = 0.0;

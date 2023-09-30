@@ -38,7 +38,6 @@ public final class SwerveModuleConstants {
   public static final boolean MK4_L2_ANGLE_MOTOR_INVERTED = false;
   public static final boolean MK4_L2_CAN_CODER_INVERTED = false;
 
-  // FIXME: assign these constants to the appropriate swerve module variant
   public static final double WHEEL_DIAMETER_METERS = MK4I_L2_WHEEL_DIAMETER_METERS;
   // MK4I_L2_WHEEL_CIRCUMFERENCE;
   public static final double WHEEL_CIRCUMFERENCE =
@@ -66,8 +65,6 @@ public final class SwerveModuleConstants {
   /* PID SLOT INDEX */
   public static final int SLOT_INDEX = 0;
 
-  // FIXME: tune PID values for the angle and drive motors
-
   /* Angle Motor PID Values */
   public static final double ANGLE_KP = 0.6;
   public static final double ANGLE_KI = 0.0;
@@ -79,8 +76,6 @@ public final class SwerveModuleConstants {
   public static final double DRIVE_KI = 0.0;
   public static final double DRIVE_KD = 0.0;
   public static final double DRIVE_KF = 0.0;
-
-  // FIXME: characterize the drivetrain and update these constants
 
   /* Drive Motor Characterization Values */
   // divide by 12 to convert from volts to percent output for CTRE

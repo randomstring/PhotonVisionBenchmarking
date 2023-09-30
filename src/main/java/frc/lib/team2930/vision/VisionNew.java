@@ -48,7 +48,7 @@ public class VisionNew extends SubsystemBase {
   private static double MAX_ALLOWABLE_PITCH = 3;
   private static double MAX_ALLOWABLE_ROLL = 3;
 
-  private static double MAX_TAG_LOG_TIME = 0.1;
+  // private static double MAX_TAG_LOG_TIME = 0.1;
 
   private static TunableNumber thetaStdDevCoefficient =
       new TunableNumber("vision/thetaStdDevCoefficient", 0.075);
@@ -112,12 +112,12 @@ public class VisionNew extends SubsystemBase {
       setAllCameraPackageUnsuccessfulStatus(VisionProcessingStatus.NOT_PROCESSING_VISION);
     }
 
-    // if (Math.abs(robotPitch.getAsDouble()) >= MAX_ALLOWABLE_PITCH
-    //     || Math.abs(robotRoll.getAsDouble()) >= MAX_ALLOWABLE_ROLL) {
-    //
-    //   processVision = false;
-    //   setAllCameraPackageUnsuccessfulStatus(VisionProcessingStatus.GYRO_ANGLE_NOT_VALID);
-    // }
+    if (Math.abs(robotPitch.getAsDouble()) >= MAX_ALLOWABLE_PITCH
+        || Math.abs(robotRoll.getAsDouble()) >= MAX_ALLOWABLE_ROLL) {
+    
+      processVision = false;
+      setAllCameraPackageUnsuccessfulStatus(VisionProcessingStatus.GYRO_ANGLE_NOT_VALID);
+    }
 
     if (processVision) {
       for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
