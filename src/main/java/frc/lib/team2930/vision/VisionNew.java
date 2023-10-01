@@ -59,23 +59,11 @@ public class VisionNew extends SubsystemBase {
 
   private List<Pose3d> actualPosesUsedInPoseEstimator = new ArrayList<>();
 
-  private Alert noAprilTagLayoutAlert = new Alert("No AprilTag layout file found", AlertType.ERROR);
-
-  public VisionNew(DoubleSupplier pitch, DoubleSupplier roll, VisionIOConfig... VisionIOConfigs) {
+  public VisionNew(DoubleSupplier pitch, DoubleSupplier roll, AprilTagFieldLayout layout, VisionIOConfig... VisionIOConfigs) {
     this.robotPitch = pitch;
     this.robotRoll = roll;
 
-    try {
-      aprilTagLayout = AprilTagFields.k2023ChargedUp.loadAprilTagLayoutField();
-      noAprilTagLayoutAlert.set(false);
-    } catch (Exception e) {
-      aprilTagLayout =
-          new AprilTagFieldLayout(
-              Collections.emptyList(),
-              FieldConstants.FIELD_LENGTH_METERS,
-              FieldConstants.FIELD_WIDTH_METERS);
-      noAprilTagLayoutAlert.set(true);
-    }
+    aprilTagLayout = layout;
 
     for (VisionIOConfig config : VisionIOConfigs) {
       allCameraResultProcessingPackages.add(

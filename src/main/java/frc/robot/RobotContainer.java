@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.function.DoubleSupplier;
@@ -11,6 +12,7 @@ import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.apriltag.AprilTagFields;
+import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.lib.team2930.vision.VisionIO;
@@ -51,7 +53,9 @@ public class RobotContainer {
 
       AprilTagFieldLayout layout;
       try {
-        layout = AprilTagFields.k2023ChargedUp.loadAprilTagLayoutField();
+        layout = new AprilTagFieldLayout(
+          new File(Filesystem.getDeployDirectory(), "test_layout.json").toPath());
+        //layout = AprilTagFields.k2023ChargedUp.loadAprilTagLayoutField();
       } catch (IOException e) {
         layout = new AprilTagFieldLayout(new ArrayList<>(), 16.4592, 8.2296);
       }
@@ -67,7 +71,7 @@ public class RobotContainer {
           "testCamera",
           Constants.ROBOT_TO_TEST_CAMERA);
 
-        vision = new VisionNew(pitchSupplier, rollSupplier, testCameraConfig);
+        vision = new VisionNew(pitchSupplier, rollSupplier, layout, testCameraConfig);
         break;
 
       // Replayed robot, disable IO implementations
@@ -75,7 +79,7 @@ public class RobotContainer {
         testCameraConfig =
           new VisionIOConfig(new VisionIO() {}, "testCamera", Constants.ROBOT_TO_TEST_CAMERA);
 
-        vision = new VisionNew(pitchSupplier, rollSupplier, testCameraConfig);
+        vision = new VisionNew(pitchSupplier, rollSupplier, layout, testCameraConfig);
         break;
     }
 
