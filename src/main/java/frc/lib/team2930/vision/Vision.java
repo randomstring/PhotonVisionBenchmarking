@@ -18,6 +18,7 @@ import frc.lib.team3061.util.RobotOdometry;
 import frc.lib.team2930.vision.VisionIO.VisionIOInputs;
 import frc.lib.team6328.util.Alert;
 import frc.lib.team6328.util.Alert.AlertType;
+import frc.robot.Constants;
 import frc.robot.FieldConstants;
 import frc.lib.team6328.util.TunableNumber;
 import java.io.IOException;
@@ -102,15 +103,15 @@ public class Vision extends SubsystemBase {
     Logger.getInstance()
         .recordOutput(
             "Vision/LeftCameraConstant",
-            new Pose3d().transformBy(VisionConstants.LEFT_ROBOT_TO_CAMERA));
+            new Pose3d().transformBy(Constants.LEFT_ROBOT_TO_CAMERA));
     Logger.getInstance()
         .recordOutput(
             "Vision/RightCameraConstant",
-            new Pose3d().transformBy(VisionConstants.RIGHT_ROBOT_TO_CAMERA));
+            new Pose3d().transformBy(Constants.RIGHT_ROBOT_TO_CAMERA));
     Logger.getInstance()
         .recordOutput(
             "Vision/BackCameraConstant",
-            new Pose3d().transformBy(VisionConstants.BACK_ROBOT_TO_CAMERA));
+            new Pose3d().transformBy(Constants.BACK_ROBOT_TO_CAMERA));
 
     PoseStrategy strategy = PoseStrategy.MULTI_TAG_PNP;
     // if (Robot.isSimulation()) {
@@ -124,17 +125,17 @@ public class Vision extends SubsystemBase {
 
     leftPhotonPoseEstimator =
         new PhotonPoseEstimator(
-            layout, strategy, L_VisionIO.getCamera(), VisionConstants.LEFT_ROBOT_TO_CAMERA);
+            layout, strategy, L_VisionIO.getCamera(), Constants.LEFT_ROBOT_TO_CAMERA);
     leftPhotonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.CLOSEST_TO_REFERENCE_POSE);
 
     rightPhotonPoseEstimator =
         new PhotonPoseEstimator(
-            layout, strategy, R_VisionIO.getCamera(), VisionConstants.RIGHT_ROBOT_TO_CAMERA);
+            layout, strategy, R_VisionIO.getCamera(), Constants.RIGHT_ROBOT_TO_CAMERA);
     rightPhotonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.CLOSEST_TO_REFERENCE_POSE);
 
     backPhotonPoseEstimator =
         new PhotonPoseEstimator(
-            layout, strategy, B_VisionIO.getCamera(), VisionConstants.BACK_ROBOT_TO_CAMERA);
+            layout, strategy, B_VisionIO.getCamera(), Constants.BACK_ROBOT_TO_CAMERA);
     rightPhotonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.CLOSEST_TO_REFERENCE_POSE);
 
     // NOTE: the camera object is not getting set in SIM or REPLAY
@@ -171,15 +172,15 @@ public class Vision extends SubsystemBase {
     Logger.getInstance().recordOutput("Vision/ValidGyroAngle", true);
 
     updatePose(
-        L_VisionIO, ioLeft, leftPhotonPoseEstimator, VisionConstants.LEFT_ROBOT_TO_CAMERA, "Left");
+        L_VisionIO, ioLeft, leftPhotonPoseEstimator, Constants.LEFT_ROBOT_TO_CAMERA, "Left");
     updatePose(
         R_VisionIO,
         ioRight,
         rightPhotonPoseEstimator,
-        VisionConstants.RIGHT_ROBOT_TO_CAMERA,
+        Constants.RIGHT_ROBOT_TO_CAMERA,
         "Right");
     updatePose(
-        B_VisionIO, ioBack, backPhotonPoseEstimator, VisionConstants.BACK_ROBOT_TO_CAMERA, "Back");
+        B_VisionIO, ioBack, backPhotonPoseEstimator, Constants.BACK_ROBOT_TO_CAMERA, "Back");
 
     Logger.getInstance().recordOutput("Vision/BackConnected", ioBack.lastTimestamp > 0.0);
     Logger.getInstance().recordOutput("Vision/LeftConnected", ioLeft.lastTimestamp > 0.0);

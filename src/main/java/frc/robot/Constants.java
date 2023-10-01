@@ -4,6 +4,11 @@
 
 package frc.robot;
 
+import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.geometry.Translation3d;
+import edu.wpi.first.math.util.Units;
+
 /**
  * The Constants class provides a convenient place for teams to hold robot-wide
  * numerical or boolean constants. This class should not be used for any other
@@ -30,4 +35,28 @@ public final class Constants {
 
   // NOTE: set TUNING_MODE to true to enable tunable numbers
   public static final boolean TUNING_MODE = true;
+
+  // Transform from the robot to each camera
+  public static final Transform3d ROBOT_TO_TEST_CAMERA = new Transform3d(
+      new Translation3d(
+          Units.inchesToMeters(0.0), Units.inchesToMeters(0.0), Units.inchesToMeters(0.0)),
+      new Rotation3d(Math.toRadians(0.0), Math.toRadians(0.0), Math.toRadians(0.0)));
+
+  // FIXME: following transforms are to quiet errors from Vision class
+  // Transform from the robot to each camera
+  public static final Transform3d LEFT_ROBOT_TO_CAMERA = new Transform3d(
+      new Translation3d(
+          Units.inchesToMeters(-0.51), Units.inchesToMeters(10.2), Units.inchesToMeters(22.8)),
+      new Rotation3d(Math.toRadians(0.0), Math.toRadians(0.0), Math.toRadians(30.0)));
+
+  public static final Transform3d RIGHT_ROBOT_TO_CAMERA = new Transform3d(
+      new Translation3d(
+          Units.inchesToMeters(-0.51), Units.inchesToMeters(-10.2), Units.inchesToMeters(22.8)),
+      new Rotation3d(Math.toRadians(0.0), Math.toRadians(0.0), Math.toRadians(-30.0)));
+
+  public static final Transform3d BACK_ROBOT_TO_CAMERA = new Transform3d(
+      new Translation3d(
+          Units.inchesToMeters(-2.7), Units.inchesToMeters(0.0), Units.inchesToMeters(33.42)),
+      new Rotation3d(Math.toRadians(0.0), Math.toRadians(10.0), Math.toRadians(180.0)));
+
 }
