@@ -9,3 +9,7 @@ Goals of this tool are:
 4. Create camera configuration
 
 A work in progress. (just started actually)
+
+# Setup
+
+Run this robot project in simulation. Configure the host's IP address to be 10.TE.ME.2 so that the PhotonVision coprocessor will connect to it. The computer running this robot code must be on the same 10.TE.ME.x network as the vision coprocessor. 

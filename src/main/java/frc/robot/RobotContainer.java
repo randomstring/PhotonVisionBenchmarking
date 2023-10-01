@@ -67,7 +67,7 @@ public class RobotContainer {
         // This is not a robot, this is code that runs in simulation mode
 
         testCameraConfig = new VisionIOConfig(
-          new VisionIOPhotonVision(""),  // FIXME: set camera name
+          new VisionIOPhotonVision("See3CAM_24CUG"),  // FIXME: set camera name
           "testCamera",
           Constants.ROBOT_TO_TEST_CAMERA);
 
