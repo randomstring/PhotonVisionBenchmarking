@@ -134,6 +134,7 @@ public class VisionNew extends SubsystemBase {
             actualPosesUsedInPoseEstimator.toArray(
                 new Pose3d[actualPosesUsedInPoseEstimator.size()]));
 
+    // FIXME: do we need to clear the pose estimator
     actualPosesUsedInPoseEstimator.clear();
 
     Logger.getInstance().recordOutput("Vision/useVision", useVisionForPoseEstimation);
@@ -142,6 +143,9 @@ public class VisionNew extends SubsystemBase {
             "Vision/useMaxDistanceAwayFromExistingEstimate",
             useMaxDistanceAwayFromExistingEstimate);
     Logger.getInstance().recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
+
+    // FIXME: for now log global position estimate here 
+    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getInstance().getEstimatedPosition());
 
     // isConnected
     // clean logging
