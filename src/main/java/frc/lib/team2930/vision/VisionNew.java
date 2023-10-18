@@ -80,6 +80,11 @@ public class VisionNew extends SubsystemBase {
     aprilTagLayout.getTags().forEach((AprilTag tag) -> lastTagDetectionTimes.put(tag.ID, -1.0));
   }
 
+  public static double calculateStandardDeviation(double Kp, double distanceFromTag, int numTagsSeen) {
+    // minimum std deviation is 1 cm or .01 rad (0.6 degrees)
+    return Math.min(0.01, (Kp * Math.pow(distanceFromTag + 1.0, 2.0)) / ((double) Math.pow(numTagsSeen, 2.0)));
+  }
+
   @Override
   public void periodic() {
     // update all inputs
@@ -325,10 +330,8 @@ public class VisionNew extends SubsystemBase {
           VisionProcessingStatus.TOO_FAR_FROM_EXISTING_ESTIMATE);
     }
 
-    xyStandardDeviation =
-        (xyStdDevCoefficient.get() * Math.pow(distanceFromTag, 2)) / ((double) numTargetsSeen);
-    thetaStandardDeviation =
-        (thetaStdDevCoefficient.get() * Math.pow(distanceFromTag, 2)) / ((double) numTargetsSeen);
+    xyStandardDeviation = calculateStandardDeviation(xyStdDevCoefficient.get(), distanceFromTag, numTargetsSeen);
+    thetaStandardDeviation = calculateStandardDeviation(thetaStdDevCoefficient.get(), distanceFromTag, numTargetsSeen);
 
     synchronized (globalPoseEstimator) {
       globalPoseEstimator.addVisionMeasurement(
