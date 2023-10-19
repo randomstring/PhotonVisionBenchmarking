@@ -11,14 +11,13 @@ import java.util.function.DoubleSupplier;
 
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
 import edu.wpi.first.wpilibj.Filesystem;
 import edu.wpi.first.wpilibj.GenericHID;
 import edu.wpi.first.wpilibj.XboxController;
 import frc.lib.team2930.vision.VisionIO;
 import frc.lib.team2930.vision.VisionIOConfig;
 import frc.lib.team2930.vision.VisionIOPhotonVision;
-import frc.lib.team2930.vision.VisionNew;
+import frc.lib.team2930.vision.Vision;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
 
@@ -31,7 +30,7 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
  */
 public class RobotContainer {
   // Subsystems
-  private final VisionNew vision;
+  private final Vision vision;
 
   // Controller
   //private final CommandXboxController controller = new CommandXboxController(0);
@@ -71,7 +70,7 @@ public class RobotContainer {
           "testCamera",
           Constants.ROBOT_TO_TEST_CAMERA);
 
-        vision = new VisionNew(pitchSupplier, rollSupplier, layout, testCameraConfig);
+        vision = new Vision(pitchSupplier, rollSupplier, layout, testCameraConfig);
         break;
 
       // Replayed robot, disable IO implementations
@@ -79,7 +78,7 @@ public class RobotContainer {
         testCameraConfig =
           new VisionIOConfig(new VisionIO() {}, "testCamera", Constants.ROBOT_TO_TEST_CAMERA);
 
-        vision = new VisionNew(pitchSupplier, rollSupplier, layout, testCameraConfig);
+        vision = new Vision(pitchSupplier, rollSupplier, layout, testCameraConfig);
         break;
     }
 

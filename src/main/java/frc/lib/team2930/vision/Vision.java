@@ -2,28 +2,21 @@ package frc.lib.team2930.vision;
 
 import edu.wpi.first.apriltag.AprilTag;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
-import edu.wpi.first.apriltag.AprilTagFields;
-import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
-import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.numbers.N1;
-import edu.wpi.first.math.numbers.N3;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import frc.lib.team3061.util.RobotOdometry;
 import frc.lib.team2930.vision.VisionIO.VisionIOInputs;
-import frc.lib.team6328.util.Alert;
-import frc.lib.team6328.util.Alert.AlertType;
-import frc.robot.Constants;
-import frc.robot.FieldConstants;
 import frc.lib.team6328.util.TunableNumber;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.DoubleSupplier;
 
@@ -35,384 +28,412 @@ import org.photonvision.targeting.PhotonPipelineResult;
 import org.photonvision.targeting.PhotonTrackedTarget;
 
 public class Vision extends SubsystemBase {
-  private VisionIO L_VisionIO;
-  private VisionIO R_VisionIO;
-  private VisionIO B_VisionIO;
+  ArrayList<CameraResultProcessingPackage> allCameraResultProcessingPackages =
+      new ArrayList<CameraResultProcessingPackage>();
 
-  private final VisionIOInputs ioLeft = new VisionIOInputs();
-  private final VisionIOInputs ioRight = new VisionIOInputs();
-  private final VisionIOInputs ioBack = new VisionIOInputs();
+  DoubleSupplier robotPitch;
+  DoubleSupplier robotRoll;
 
-  private AprilTagFieldLayout layout;
+  AprilTagFieldLayout aprilTagLayout;
 
-  private HashMap<String, Double> lastTimestamp = new HashMap<>();
-
-  PhotonPoseEstimator leftPhotonPoseEstimator;
-  PhotonPoseEstimator rightPhotonPoseEstimator;
-  PhotonPoseEstimator backPhotonPoseEstimator;
-
-  private boolean updatePoseWithVisionReadings = true;
-  private boolean useMaxValidDistanceAway = true;
-
-  private Alert noAprilTagLayoutAlert =
-      new Alert(
-          "No AprilTag layout file found. Update APRILTAG_FIELD_LAYOUT_PATH in VisionConstants.java",
-          AlertType.WARNING);
-
-  private DoubleSupplier robotPitch;
-  private DoubleSupplier robotRoll;
+  boolean useVisionForPoseEstimation = true;
+  boolean useMaxDistanceAwayFromExistingEstimate = true;
+  boolean useMaxPitchRoll = true;
 
   private static double MAX_ALLOWABLE_PITCH = 3;
   private static double MAX_ALLOWABLE_ROLL = 3;
 
-  private static TunableNumber twoTargetDeviation =
-      new TunableNumber("Vision/deviations/twoTarget", 0.6);
-  private static TunableNumber threeTargetDeviation =
-      new TunableNumber("Vision/deviations/threeTarget", 0.4);
-  private static TunableNumber fourTargetDeviation =
-      new TunableNumber("Vision/deviations/fourTarget", 0.2);
+  // private static double MAX_TAG_LOG_TIME = 0.1;
 
-  private static Matrix<N3, N1> defaultDeviation = VecBuilder.fill(0.9, 0.9, 0.9);
+  private static TunableNumber thetaStdDevCoefficient =
+      new TunableNumber("vision/thetaStdDevCoefficient", 0.075);
+  private static TunableNumber xyStdDevCoefficient =
+      new TunableNumber("vision/xyStdDevCoefficient", 0.075);
 
-  public Vision(
-      VisionIO L_VisionIO, VisionIO R_VisionIO, VisionIO B_VisionIO, DoubleSupplier pitch, DoubleSupplier roll) {
-    this.L_VisionIO = L_VisionIO;
-    this.R_VisionIO = R_VisionIO;
-    this.B_VisionIO = B_VisionIO;
+  private HashMap<Integer, Double> lastTagDetectionTimes = new HashMap<Integer, Double>();
 
+  private List<Pose3d> actualPosesUsedInPoseEstimator = new ArrayList<>();
+
+  public Vision(DoubleSupplier pitch, DoubleSupplier roll, AprilTagFieldLayout layout, VisionIOConfig... VisionIOConfigs) {
     this.robotPitch = pitch;
     this.robotRoll = roll;
 
-    Logger.getInstance().recordOutput("Vision/updatePoseWithVisionReadings", true);
-    Logger.getInstance().recordOutput("Vision/useMaxValidDistanceAway", true);
+    aprilTagLayout = layout;
 
-    try {
-      layout = AprilTagFields.k2023ChargedUp.loadAprilTagLayoutField();
-      noAprilTagLayoutAlert.set(false);
-    } catch (IOException e) {
-      layout =
-          new AprilTagFieldLayout(
-              new ArrayList<>(), FieldConstants.FIELD_LENGTH_METERS, FieldConstants.FIELD_WIDTH_METERS);
-      noAprilTagLayoutAlert.set(true);
+    for (VisionIOConfig config : VisionIOConfigs) {
+      allCameraResultProcessingPackages.add(
+          new CameraResultProcessingPackage(config, aprilTagLayout));
     }
 
-    for (AprilTag tag : layout.getTags()) {
-      Logger.getInstance().recordOutput("Vision/AprilTags/" + tag.ID, tag.pose);
+    // log all robotToCamera constants, useful for cameraOverride view mode in advantage scope
+    for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
+      Logger.getInstance()
+          .recordOutput(
+              "Vision/" + cameraPackage.name + "CameraConstant",
+              new Pose3d().transformBy(cameraPackage.RobotToCamera));
     }
 
-    Logger.getInstance()
-        .recordOutput(
-            "Vision/LeftCameraConstant",
-            new Pose3d().transformBy(Constants.LEFT_ROBOT_TO_CAMERA));
-    Logger.getInstance()
-        .recordOutput(
-            "Vision/RightCameraConstant",
-            new Pose3d().transformBy(Constants.RIGHT_ROBOT_TO_CAMERA));
-    Logger.getInstance()
-        .recordOutput(
-            "Vision/BackCameraConstant",
-            new Pose3d().transformBy(Constants.BACK_ROBOT_TO_CAMERA));
-
-    PoseStrategy strategy = PoseStrategy.MULTI_TAG_PNP;
-    // if (Robot.isSimulation()) {
-    //   // MULTI_TAG_PNP doesn't work in simulation
-    //   strategy = PoseStrategy.CLOSEST_TO_REFERENCE_POSE;
-    // }
-
-    lastTimestamp.put("Left", 0.0);
-    lastTimestamp.put("Right", 0.0);
-    lastTimestamp.put("Back", 0.0);
-
-    leftPhotonPoseEstimator =
-        new PhotonPoseEstimator(
-            layout, strategy, L_VisionIO.getCamera(), Constants.LEFT_ROBOT_TO_CAMERA);
-    leftPhotonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.CLOSEST_TO_REFERENCE_POSE);
-
-    rightPhotonPoseEstimator =
-        new PhotonPoseEstimator(
-            layout, strategy, R_VisionIO.getCamera(), Constants.RIGHT_ROBOT_TO_CAMERA);
-    rightPhotonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.CLOSEST_TO_REFERENCE_POSE);
-
-    backPhotonPoseEstimator =
-        new PhotonPoseEstimator(
-            layout, strategy, B_VisionIO.getCamera(), Constants.BACK_ROBOT_TO_CAMERA);
-    rightPhotonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.CLOSEST_TO_REFERENCE_POSE);
-
-    // NOTE: the camera object is not getting set in SIM or REPLAY
-    if (R_VisionIO.getCamera() == null) {
-      System.out.println("NO RIGHT CAMERA");
+    for (AprilTag tag : aprilTagLayout.getTags()) {
+      Logger.getInstance().recordOutput("Vision/AllAprilTags3D/" + tag.ID, tag.pose);
     }
-    if (L_VisionIO.getCamera() == null) {
-      System.out.println("NO LEFT CAMERA");
-    }
+
+    aprilTagLayout.getTags().forEach((AprilTag tag) -> lastTagDetectionTimes.put(tag.ID, -1.0));
+  }
+
+  public static double calculateStandardDeviation(double Kp, double distanceFromTag, int numTagsSeen) {
+    // minimum std deviation is 1 cm or .01 rad (0.6 degrees)
+    return Math.min(0.01, (Kp * Math.pow(distanceFromTag + 1.0, 2.0)) / ((double) Math.pow(numTagsSeen, 2.0)));
   }
 
   @Override
   public void periodic() {
+    // update all inputs
+    for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
+      cameraPackage.visionIO.updateInputs(cameraPackage.visionIOInputs);
+      Logger.getInstance()
+          .processInputs("Vision/" + cameraPackage.name, cameraPackage.visionIOInputs);
+    }
 
-    L_VisionIO.updateInputs(ioLeft);
-    R_VisionIO.updateInputs(ioRight);
-    B_VisionIO.updateInputs(ioBack);
-
-    Logger.getInstance().processInputs("Vision/Left", ioLeft);
-    Logger.getInstance().processInputs("Vision/Right", ioRight);
-    Logger.getInstance().processInputs("Vision/Back", ioBack);
-
-    if (!updatePoseWithVisionReadings) {
-      return;
+    boolean processVision = true;
+    if (!useVisionForPoseEstimation) {
+      processVision = false;
+      setAllCameraPackageUnsuccessfulStatus(VisionProcessingStatus.NOT_PROCESSING_VISION);
     }
 
     if (Math.abs(robotPitch.getAsDouble()) >= MAX_ALLOWABLE_PITCH
         || Math.abs(robotRoll.getAsDouble()) >= MAX_ALLOWABLE_ROLL) {
-
-      Logger.getInstance().recordOutput("Vision/ValidGyroAngle", false);
-      return;
+    
+      processVision = false;
+      setAllCameraPackageUnsuccessfulStatus(VisionProcessingStatus.GYRO_ANGLE_NOT_VALID);
     }
 
-    Logger.getInstance().recordOutput("Vision/ValidGyroAngle", true);
+    if (processVision) {
+      for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
+        var fieldsToLog = processVision(cameraPackage);
+        cameraPackage.loggedFields = fieldsToLog;
+      }
+    }
 
-    updatePose(
-        L_VisionIO, ioLeft, leftPhotonPoseEstimator, Constants.LEFT_ROBOT_TO_CAMERA, "Left");
-    updatePose(
-        R_VisionIO,
-        ioRight,
-        rightPhotonPoseEstimator,
-        Constants.RIGHT_ROBOT_TO_CAMERA,
-        "Right");
-    updatePose(
-        B_VisionIO, ioBack, backPhotonPoseEstimator, Constants.BACK_ROBOT_TO_CAMERA, "Back");
+    for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
+      logVisionProcessingStatusAndFields(cameraPackage);
+    }
 
-    Logger.getInstance().recordOutput("Vision/BackConnected", ioBack.lastTimestamp > 0.0);
-    Logger.getInstance().recordOutput("Vision/LeftConnected", ioLeft.lastTimestamp > 0.0);
-    Logger.getInstance().recordOutput("Vision/RightConnected", ioRight.lastTimestamp > 0.0);
+    List<Pose3d> allAtThisVeryMomentVisibleTags = new ArrayList<>();
+
+    for (Map.Entry<Integer, Double> detectionEntry : lastTagDetectionTimes.entrySet()) {
+      if (detectionEntry.getValue() == Timer.getFPGATimestamp()) {
+        var tagPose = aprilTagLayout.getTagPose(detectionEntry.getKey());
+        allAtThisVeryMomentVisibleTags.add(tagPose.get());
+      }
+    }
+
+    Logger.getInstance()
+        .recordOutput(
+            "Vision/currentVisibleTags_EXACT_MOMENT",
+            allAtThisVeryMomentVisibleTags.toArray(
+                new Pose3d[allAtThisVeryMomentVisibleTags.size()]));
+
+    Logger.getInstance()
+        .recordOutput(
+            "Vision/actual_poses_used_in_pose_estimator",
+            actualPosesUsedInPoseEstimator.toArray(
+                new Pose3d[actualPosesUsedInPoseEstimator.size()]));
+
+    // FIXME: do we need to clear the pose estimator
+    actualPosesUsedInPoseEstimator.clear();
+
+    Logger.getInstance().recordOutput("Vision/useVision", useVisionForPoseEstimation);
+    Logger.getInstance()
+        .recordOutput(
+            "Vision/useMaxDistanceAwayFromExistingEstimate",
+            useMaxDistanceAwayFromExistingEstimate);
+    Logger.getInstance().recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
+
+    // FIXME: for now log global position estimate here 
+    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getInstance().getEstimatedPosition());
+
+    // isConnected
+    // clean logging
   }
 
-  private void updatePose(
-      VisionIO visionIO,
-      VisionIOInputs io,
-      PhotonPoseEstimator photonPoseEstimator,
-      Transform3d cameraToRobot,
-      String name) {
+  public VisionProcessingLoggedFields processVision(CameraResultProcessingPackage cameraPackage) {
+    PhotonPipelineResult cameraResult;
+    double currentResultTimeStamp;
 
-    boolean updated = false;
-    boolean pnpFailed = false;
+    SwerveDrivePoseEstimator globalPoseEstimator = RobotOdometry.getInstance().getPoseEstimator();
+    Pose2d prevEstimatedRobotPose = globalPoseEstimator.getEstimatedPosition();
 
-    SwerveDrivePoseEstimator poseEstimator = RobotOdometry.getInstance().getPoseEstimator();
-    Pose2d prevEstimatedRobotPose = poseEstimator.getEstimatedPosition();
-    double timestamp = 0;
-    double distance = 0.0;
-    PhotonPipelineResult cameraResult = null;
-    Pose3d robotPose = null;
+    Pose3d newCalculatedRobotPose;
 
-    double standardDeviation = -1.0;
+    double xyStandardDeviation;
+    double thetaStandardDeviation;
 
-    // Synchronize read/write on camera data, this is getting written asynchronously
-    synchronized (io) {
-      cameraResult = io.lastResult;
-      timestamp = io.lastTimestamp;
+    // storing fields to log
+    double tagAmbiguity;
+    double distanceFromTag;
+    Pose3d cameraPose;
+
+    synchronized (cameraPackage.visionIOInputs) {
+      cameraResult = cameraPackage.visionIOInputs.lastResult;
+      currentResultTimeStamp = cameraPackage.visionIOInputs.lastTimestamp;
     }
 
-    // is this a new camera result?
-    double prevTimestamp = lastTimestamp.get(name);
-    if (prevTimestamp >= timestamp) {
-      return;
+    if (cameraPackage.lastProcessedResultTimeStamp >= currentResultTimeStamp) {
+      return VisionProcessingLoggedFields.unsuccessfulStatus(
+          VisionProcessingStatus.NOT_A_NEW_RESULT);
     }
-    lastTimestamp.put(name, timestamp);
 
-    int targetsSeen = cameraResult.getTargets().size();
-    Logger.getInstance().recordOutput("Vision/" + name + "/SeenTargets", targetsSeen);
+    cameraPackage.lastProcessedResultTimeStamp = currentResultTimeStamp;
 
-    if (targetsSeen > 1) {
-      // more than one target seen, use PNP with PV estimator
-      Optional<EstimatedRobotPose> result;
-      EstimatedRobotPose estimatedRobotPose = null;
+    // String ROOT_LOG_PATH = "Vision/" + cameraPackage.name + "/";
 
-      photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
-      result = photonPoseEstimator.update(cameraResult);
-      if (result.isPresent()) {
-        estimatedRobotPose = result.get();
-      }
+    ArrayList<PhotonTrackedTarget> cleanTargets = new ArrayList<PhotonTrackedTarget>();
 
-      if (estimatedRobotPose != null) {
-        robotPose = estimatedRobotPose.estimatedPose;
-
-        standardDeviation = getDeviationForNumTargets(targetsSeen);
-
-        Logger.getInstance()
-            .recordOutput("Vision/" + name + "/CameraPose", robotPose.transformBy(cameraToRobot));
-      } else {
-        pnpFailed = true;
-      }
-
-      Logger.getInstance().recordOutput("Vision/" + name + "/Ambiguity", 0.0);
-
-    } else {
-      // zero or 1 target, manually check if it is accurate enough
-      for (PhotonTrackedTarget target : cameraResult.getTargets()) {
-        if (isValidTarget(target)) {
-          Transform3d cameraToTarget = target.getBestCameraToTarget();
-          Optional<Pose3d> tagPoseOptional = layout.getTagPose(target.getFiducialId());
-          if (tagPoseOptional.isEmpty()) {
-            break;
-          }
-
-          Pose3d tagPose = tagPoseOptional.get();
-          Pose3d cameraPose = tagPose.transformBy(cameraToTarget.inverse());
-
-          robotPose = cameraPose.transformBy(cameraToRobot.inverse());
-
-          standardDeviation = cameraToTarget.getTranslation().getNorm() / 2.0;
-
-          Logger.getInstance()
-              .recordOutput(
-                  "Vision/" + name + "/distanceNorm3D", cameraToTarget.getTranslation().getNorm());
-
-          Logger.getInstance()
-              .recordOutput("Vision/" + name + "/Ambiguity", target.getPoseAmbiguity());
-          Logger.getInstance().recordOutput("Vision/" + name + "/CameraPose", cameraPose);
-        }
+    for (PhotonTrackedTarget target : cameraResult.getTargets()) {
+      if (aprilTagLayout.getTagPose(target.getFiducialId()).isPresent()) {
+        cleanTargets.add(target);
       }
     }
 
-    if (robotPose != null) {
-      distance =
-          prevEstimatedRobotPose
+    cleanTargets.forEach(
+        (PhotonTrackedTarget tag) ->
+            lastTagDetectionTimes.put(tag.getFiducialId(), Timer.getFPGATimestamp()));
+
+    var numTargetsSeen = cleanTargets.size();
+
+    if (numTargetsSeen == 0) {
+      return VisionProcessingLoggedFields.unsuccessfulStatus(
+          VisionProcessingStatus.NO_TARGETS_VISIBLE);
+    }
+
+    // --------------------- EXPERIMENTAL
+
+    if (numTargetsSeen == 1) {
+      PhotonTrackedTarget singularTag = cameraResult.getTargets().get(0);
+
+      if (!isValidTarget(singularTag)) {
+        return (singularTag.getPoseAmbiguity() >= VisionConstants.MAXIMUM_AMBIGUITY)
+            ? VisionProcessingLoggedFields.unsuccessfulStatus(
+                VisionProcessingStatus.INVALID_TAG_AMBIGUITY_TOO_HIGH)
+            : VisionProcessingLoggedFields.unsuccessfulStatus(VisionProcessingStatus.INVALID_TAG);
+      }
+    }
+
+    Optional<EstimatedRobotPose> photonPoseEstimatorOptionalResult;
+
+    cameraPackage.photonPoseEstimator.setReferencePose(prevEstimatedRobotPose);
+    photonPoseEstimatorOptionalResult = cameraPackage.photonPoseEstimator.update(cameraResult);
+
+    if (photonPoseEstimatorOptionalResult.isEmpty()) {
+      return VisionProcessingLoggedFields.unsuccessfulStatus(
+          VisionProcessingStatus.PHOTON_POSE_ESTIMATOR_OPTIONAL_RESULT_EMPTY);
+    }
+
+    newCalculatedRobotPose = photonPoseEstimatorOptionalResult.get().estimatedPose;
+
+    // logged fields
+    tagAmbiguity = 0.0;
+    cameraPose = newCalculatedRobotPose.transformBy(cameraPackage.RobotToCamera);
+
+    double totalDistance = 0.0;
+    for (PhotonTrackedTarget tag : cleanTargets) {
+      totalDistance +=
+          aprilTagLayout
+              .getTagPose(tag.getFiducialId())
+              .get()
               .getTranslation()
-              .getDistance(new Translation2d(robotPose.getX(), robotPose.getY()));
-
-      Logger.getInstance().recordOutput("Vision/" + name + "/DistanceFromRobot", distance);
-      Logger.getInstance().recordOutput("Vision/" + name + "/RobotPose", robotPose.toPose2d());
-      Logger.getInstance().recordOutput("Vision/" + name + "/3DRobotPose", robotPose);
-
-      // distance from vision estimate to last position estimate
-      if ((useMaxValidDistanceAway)
-          && (distance > (VisionConstants.MAX_VALID_DISTANCE_AWAY_METERS * targetsSeen))) {
-        // no update
-      } else {
-        // we passed all the checks, update the pose
-        updated = true;
-
-        // -1 = error when calculating deviation
-        synchronized (poseEstimator) {
-          if (standardDeviation == -1) {
-            poseEstimator.addVisionMeasurement(robotPose.toPose2d(), timestamp, defaultDeviation);
-          } else {
-            poseEstimator.addVisionMeasurement(
-                robotPose.toPose2d(),
-                timestamp,
-                VecBuilder.fill(standardDeviation, standardDeviation, 0.9));
-          }
-        }
-      }
+              .getDistance(newCalculatedRobotPose.getTranslation());
     }
 
-    Logger.getInstance().recordOutput("Vision/" + name + "/Updated", updated);
-    Logger.getInstance().recordOutput("Vision/" + name + "/pnpFailed", pnpFailed);
-    Logger.getInstance().recordOutput("Vision/" + name + "/standardDeviation", standardDeviation);
-  }
+    distanceFromTag = totalDistance / (double) cleanTargets.size();
 
-  public boolean tagVisible(int id, PhotonPipelineResult result) {
-    for (PhotonTrackedTarget target : result.getTargets()) {
-      if (target.getFiducialId() == id && isValidTarget(target)) {
-        return true;
-      }
+ 
+    //   // FIX ME: removed for simulation
+    //   // if (cameraResult.getTargets().size() > 1) {
+    //   //   return VisionProcessingLoggedFields.unsuccessfulStatus(
+    //   //       VisionProcessingStatus.LOGIC_ERROR_EXPECTED_1_TARGET);
+    //   // }
+
+    var distanceFromExistingPoseEstimate =
+        prevEstimatedRobotPose
+            .getTranslation()
+            .getDistance(
+                new Translation2d(newCalculatedRobotPose.getX(), newCalculatedRobotPose.getY()));
+
+    if (useMaxDistanceAwayFromExistingEstimate
+        && (distanceFromExistingPoseEstimate
+            > (VisionConstants.MAX_VALID_DISTANCE_AWAY_METERS * numTargetsSeen))) {
+      return VisionProcessingLoggedFields.unsuccessfulStatus(
+          VisionProcessingStatus.TOO_FAR_FROM_EXISTING_ESTIMATE);
     }
-    return false;
-  }
 
-  /**
-   * returns the best Rotation3d from the robot to the given target.
-   *
-   * @param id
-   * @return the Transform3d or null if there isn't
-   */
-  public Transform3d getTransform3dToTag(
-      int id, PhotonPipelineResult result, Transform3d robotToCamera) {
-    Transform3d bestTransform3d = null;
+    xyStandardDeviation = calculateStandardDeviation(xyStdDevCoefficient.get(), distanceFromTag, numTargetsSeen);
+    thetaStandardDeviation = calculateStandardDeviation(thetaStdDevCoefficient.get(), distanceFromTag, numTargetsSeen);
 
-    for (PhotonTrackedTarget target : result.getTargets()) {
-      // the target must be the same as the given target id, and the target must be available
-      if (target.getFiducialId() != id || !isValidTarget(target)) {
-        break;
-      }
-
-      bestTransform3d = robotToCamera.plus(target.getBestCameraToTarget());
+    synchronized (globalPoseEstimator) {
+      globalPoseEstimator.addVisionMeasurement(
+          newCalculatedRobotPose.toPose2d(),
+          currentResultTimeStamp,
+          VecBuilder.fill(xyStandardDeviation, xyStandardDeviation, thetaStandardDeviation));
     }
-    return bestTransform3d;
+
+    actualPosesUsedInPoseEstimator.add(newCalculatedRobotPose);
+
+    return new VisionProcessingLoggedFields(
+        VisionProcessingStatus.SUCCESSFUL,
+        numTargetsSeen,
+        tagAmbiguity,
+        distanceFromTag,
+        distanceFromExistingPoseEstimate,
+        xyStandardDeviation,
+        thetaStandardDeviation,
+        currentResultTimeStamp,
+        cameraPose,
+        newCalculatedRobotPose);
+
+    // log num targets seen
+
   }
 
-  public Rotation2d getAngleToTag(int id, PhotonPipelineResult result, Transform3d robotToCamera) {
-    Transform3d transform = getTransform3dToTag(id, result, robotToCamera);
-    if (transform != null) {
-      return new Rotation2d(transform.getTranslation().getX(), transform.getTranslation().getY());
-    } else {
-      return null;
+  public void setAllCameraPackageUnsuccessfulStatus(VisionProcessingStatus status) {
+    for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
+      cameraPackage.loggedFields = VisionProcessingLoggedFields.unsuccessfulStatus(status);
     }
   }
 
-  public double getDistanceToTag(int id, PhotonPipelineResult result, Transform3d robotToCamera) {
-    Transform3d transform = getTransform3dToTag(id, result, robotToCamera);
-    if (transform != null) {
-      return transform.getTranslation().toTranslation2d().getNorm();
-    } else {
-      return -1;
-    }
+  // public void setAllCameraPackageFieldsToLog(VisionProcessingLoggedFields fieldsToLog) {
+  //   for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
+  //     cameraPackage.fieldsToLog = fieldsToLog;
+  //   }
+  // }
+
+  public void logVisionProcessingStatusAndFields(CameraResultProcessingPackage cameraPackage) {
+
+    String ROOT_TABLE_PATH = "Vision/" + cameraPackage.name + "/";
+
+    var fieldsToLog = cameraPackage.loggedFields;
+
+    Logger logger = Logger.getInstance();
+
+    logger.recordOutput(
+        ROOT_TABLE_PATH + "*STATUS",
+        fieldsToLog.status().name() + ": " + fieldsToLog.status().logOutput);
+
+    logger.recordOutput(ROOT_TABLE_PATH + "calculated_robotPose_3d", fieldsToLog.robotPose3d());
+    logger.recordOutput(
+        ROOT_TABLE_PATH + "calculated_robotPose_2d", fieldsToLog.robotPose3d().toPose2d());
+    logger.recordOutput(ROOT_TABLE_PATH + "camera_pose_3d", fieldsToLog.cameraPose());
+    logger.recordOutput(ROOT_TABLE_PATH + "num_seen_targets", fieldsToLog.numSeenTargets());
+    logger.recordOutput(ROOT_TABLE_PATH + "processed_timestamp", fieldsToLog.processedTimeStamp());
+    logger.recordOutput(
+        ROOT_TABLE_PATH + "distance_from_existing_pose_estimate",
+        fieldsToLog.distanceFromExistingPoseEstimate());
+    logger.recordOutput(ROOT_TABLE_PATH + "distance_from_tag", fieldsToLog.distanceFromTag());
+    logger.recordOutput(ROOT_TABLE_PATH + "tag_ambiguity", fieldsToLog.tagAmbiguity());
+    logger.recordOutput(
+        ROOT_TABLE_PATH + "xy_standard_deviation", fieldsToLog.xyStandardDeviation());
+    logger.recordOutput(
+        ROOT_TABLE_PATH + "theta_standard_deviation", fieldsToLog.thetaStandardDeviation());
+
+    boolean addedVisionEstimateToPoseEstimator =
+        (fieldsToLog.status().equals(VisionProcessingStatus.SUCCESSFUL)) ? true : false;
+
+    logger.recordOutput(
+        ROOT_TABLE_PATH + "added_vision_measurement_to_pose_estimator(AKA SUCCESSFUL?)",
+        addedVisionEstimateToPoseEstimator);
   }
 
   public boolean isValidTarget(PhotonTrackedTarget target) {
     return target.getFiducialId() != -1
         && target.getPoseAmbiguity() != -1
         && target.getPoseAmbiguity() < VisionConstants.MAXIMUM_AMBIGUITY
-        && layout.getTagPose(target.getFiducialId()).isPresent();
+        && aprilTagLayout.getTagPose(target.getFiducialId()).isPresent();
   }
 
-  public void enableMaxDistanceAwayForTags() {
-    Logger.getInstance().recordOutput("Vision/useMaxValidDistanceAway", true);
-    useMaxValidDistanceAway = true;
+  public void useMaxDistanceAwayFromExistingEstimate(boolean value) {
+    useMaxDistanceAwayFromExistingEstimate = value;
   }
 
-  public void disableMaxDistanceAwayForTags() {
-    Logger.getInstance().recordOutput("Vision/useMaxValidDistanceAway", false);
-    useMaxValidDistanceAway = false;
+  private class CameraResultProcessingPackage {
+    final VisionIO visionIO;
+    final VisionIOInputs visionIOInputs;
+    final PhotonPoseEstimator photonPoseEstimator;
+    final Transform3d RobotToCamera;
+    final String name;
+
+    public double lastProcessedResultTimeStamp;
+    public VisionProcessingLoggedFields loggedFields;
+
+    public CameraResultProcessingPackage(
+        VisionIOConfig config, AprilTagFieldLayout aprilTagFieldLayout) {
+      this.visionIO = config.visionIO;
+      this.visionIOInputs = new VisionIOInputs();
+
+      this.RobotToCamera = config.robotToCamera;
+
+      this.name = config.name;
+
+      this.photonPoseEstimator =
+          new PhotonPoseEstimator(
+              aprilTagFieldLayout, PoseStrategy.MULTI_TAG_PNP, visionIO.getCamera(), RobotToCamera);
+      photonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.CLOSEST_TO_REFERENCE_POSE);
+
+      lastProcessedResultTimeStamp = 0.0;
+    }
   }
 
-  public void enableUpdatePoseWithVisionReadings() {
-    Logger.getInstance().recordOutput("Vision/updatePoseWithVisionReadings", true);
-    updatePoseWithVisionReadings = true;
-  }
+  private record VisionProcessingLoggedFields(
+      VisionProcessingStatus status,
+      double numSeenTargets,
+      double tagAmbiguity,
+      double distanceFromTag,
+      double distanceFromExistingPoseEstimate,
+      double xyStandardDeviation,
+      double thetaStandardDeviation,
+      double processedTimeStamp,
+      Pose3d cameraPose,
+      Pose3d robotPose3d) {
 
-  public void disableUpdatePoseWithVisionReadings() {
-    Logger.getInstance().recordOutput("Vision/updatePoseWithVisionReadings", false);
-    updatePoseWithVisionReadings = false;
-  }
+    private VisionProcessingLoggedFields {}
 
-  private double getDeviationForNumTargets(int numTargets) {
-    if (numTargets == 2) {
-      return twoTargetDeviation.get();
+    private VisionProcessingLoggedFields(VisionProcessingStatus status) {
+      this(status, -1, -1, -1, -1, -1, -1, -1, new Pose3d(), new Pose3d());
     }
 
-    if (numTargets == 3) {
-      return threeTargetDeviation.get();
-    }
+    public static VisionProcessingLoggedFields DEFAULT_LOG_VALUES =
+        new VisionProcessingLoggedFields(
+            // probably make the poses like -10, -10, 0 to move them off screen and make it obvious
+            // its bad results
+            VisionProcessingStatus.UNKNOWN, -1, -1, -1, -1, -1, -1, -1, new Pose3d(), new Pose3d());
 
-    if (numTargets > 3) {
-      return fourTargetDeviation.get();
+    public static VisionProcessingLoggedFields unsuccessfulStatus(VisionProcessingStatus status) {
+      return new VisionProcessingLoggedFields(status);
     }
-
-    return 1.2;
   }
-}
 
-class TargetComparator implements java.util.Comparator<PhotonTrackedTarget> {
-  @Override
-  public int compare(PhotonTrackedTarget a, PhotonTrackedTarget b) {
-    double ambiguityDiff = a.getPoseAmbiguity() - b.getPoseAmbiguity();
-    if (ambiguityDiff < 0.0) {
-      return -1;
+  private enum VisionProcessingStatus {
+    NOT_PROCESSING_VISION(""),
+    GYRO_ANGLE_NOT_VALID(""),
+    NOT_A_NEW_RESULT(""),
+    PHOTON_POSE_ESTIMATOR_OPTIONAL_RESULT_EMPTY(""),
+    NO_TARGETS_VISIBLE(""),
+
+    LOGIC_ERROR_EXPECTED_1_TARGET(""),
+
+    TOO_FAR_FROM_EXISTING_ESTIMATE(""),
+
+    INVALID_TAG_AMBIGUITY_TOO_HIGH(""),
+    INVALID_TAG(""),
+
+    TAG_NOT_IN_LAYOUT(""),
+
+    SUCCESSFUL(""),
+    UNKNOWN("UNKNOWN");
+
+    public final String logOutput;
+
+    private VisionProcessingStatus(String logOutput) {
+      this.logOutput = logOutput;
     }
-    if (ambiguityDiff > 0.0) {
-      return 1;
-    }
-    return 0;
   }
 }

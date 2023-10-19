@@ -34,4 +34,10 @@ public class RobotOdometry {
   public SwerveDrivePoseEstimator getPoseEstimator() {
     return estimator;
   }
+
+  public Pose2d getEstimatedPosition() {
+    synchronized(robotOdometry) {
+      return estimator.getEstimatedPosition();
+    }
+  }
 }
