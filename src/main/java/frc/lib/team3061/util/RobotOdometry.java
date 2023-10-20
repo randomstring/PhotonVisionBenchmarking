@@ -40,4 +40,6 @@ public class RobotOdometry {
       return estimator.getEstimatedPosition();
     }
   }
+
+  //TODO: guard setting and reading estimator methods with synchronize
 }

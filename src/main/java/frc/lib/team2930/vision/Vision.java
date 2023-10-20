@@ -52,7 +52,7 @@ public class Vision extends SubsystemBase {
 
   private HashMap<Integer, Double> lastTagDetectionTimes = new HashMap<Integer, Double>();
 
-  private List<Pose3d> actualPosesUsedInPoseEstimator = new ArrayList<>();
+  // private List<Pose3d> actualPosesUsedInPoseEstimator = new ArrayList<>();
 
   public Vision(DoubleSupplier pitch, DoubleSupplier roll, AprilTagFieldLayout layout, VisionIOConfig... VisionIOConfigs) {
     this.robotPitch = pitch;
@@ -80,48 +80,67 @@ public class Vision extends SubsystemBase {
     aprilTagLayout.getTags().forEach((AprilTag tag) -> lastTagDetectionTimes.put(tag.ID, -1.0));
   }
 
+
   public static double calculateStandardDeviation(double Kp, double distanceFromTag, int numTagsSeen) {
     // minimum std deviation is 1 cm or .01 rad (0.6 degrees)
     return Math.min(0.01, (Kp * Math.pow(distanceFromTag + 1.0, 2.0)) / ((double) Math.pow(numTagsSeen, 2.0)));
   }
 
-  @Override
-  public void periodic() {
-    // update all inputs
-    for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
+  public void processCameraVisionUpdate(CameraResultProcessingPackage cameraPackage) {
       cameraPackage.visionIO.updateInputs(cameraPackage.visionIOInputs);
       Logger.getInstance()
           .processInputs("Vision/" + cameraPackage.name, cameraPackage.visionIOInputs);
-    }
 
     boolean processVision = true;
     if (!useVisionForPoseEstimation) {
       processVision = false;
-      setAllCameraPackageUnsuccessfulStatus(VisionProcessingStatus.NOT_PROCESSING_VISION);
+      cameraPackage.loggedFields = VisionProcessingLoggedFields.unsuccessfulStatus(VisionProcessingStatus.NOT_PROCESSING_VISION);
     }
 
     if (Math.abs(robotPitch.getAsDouble()) >= MAX_ALLOWABLE_PITCH
         || Math.abs(robotRoll.getAsDouble()) >= MAX_ALLOWABLE_ROLL) {
     
       processVision = false;
-      setAllCameraPackageUnsuccessfulStatus(VisionProcessingStatus.GYRO_ANGLE_NOT_VALID);
+      cameraPackage.loggedFields = VisionProcessingLoggedFields.unsuccessfulStatus(VisionProcessingStatus.GYRO_ANGLE_NOT_VALID);
     }
 
     if (processVision) {
-      for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
         var fieldsToLog = processVision(cameraPackage);
         cameraPackage.loggedFields = fieldsToLog;
-      }
     }
 
-    for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
-      logVisionProcessingStatusAndFields(cameraPackage);
-    }
+    logVisionProcessingStatusAndFields(cameraPackage);
 
+    // Logger.getInstance()
+    //     .recordOutput(
+    //         "Vision/actual_poses_used_in_pose_estimator",
+    //         actualPosesUsedInPoseEstimator.toArray(
+    //             new Pose3d[actualPosesUsedInPoseEstimator.size()]));
+
+    // FIXME: do we need to clear the pose estimator
+    // actualPosesUsedInPoseEstimator.clear();
+
+    Logger.getInstance().recordOutput("Vision/useVision", useVisionForPoseEstimation);
+    Logger.getInstance()
+        .recordOutput(
+            "Vision/useMaxDistanceAwayFromExistingEstimate",
+            useMaxDistanceAwayFromExistingEstimate);
+    Logger.getInstance().recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
+
+    // FIXME: for now log global position estimate here 
+    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getInstance().getEstimatedPosition());
+
+
+  }
+
+  @Override
+  public void periodic() {
+ 
     List<Pose3d> allAtThisVeryMomentVisibleTags = new ArrayList<>();
 
     for (Map.Entry<Integer, Double> detectionEntry : lastTagDetectionTimes.entrySet()) {
-      if (detectionEntry.getValue() == Timer.getFPGATimestamp()) {
+      if (Timer.getFPGATimestamp() - detectionEntry.getValue() <= 0.02) {
+        // note tags visible in the last robot clock cycle
         var tagPose = aprilTagLayout.getTagPose(detectionEntry.getKey());
         allAtThisVeryMomentVisibleTags.add(tagPose.get());
       }
@@ -133,14 +152,14 @@ public class Vision extends SubsystemBase {
             allAtThisVeryMomentVisibleTags.toArray(
                 new Pose3d[allAtThisVeryMomentVisibleTags.size()]));
 
-    Logger.getInstance()
-        .recordOutput(
-            "Vision/actual_poses_used_in_pose_estimator",
-            actualPosesUsedInPoseEstimator.toArray(
-                new Pose3d[actualPosesUsedInPoseEstimator.size()]));
+    // Logger.getInstance()
+    //     .recordOutput(
+    //         "Vision/actual_poses_used_in_pose_estimator",
+    //         actualPosesUsedInPoseEstimator.toArray(
+    //             new Pose3d[actualPosesUsedInPoseEstimator.size()]));
 
     // FIXME: do we need to clear the pose estimator
-    actualPosesUsedInPoseEstimator.clear();
+    // actualPosesUsedInPoseEstimator.clear();
 
     Logger.getInstance().recordOutput("Vision/useVision", useVisionForPoseEstimation);
     Logger.getInstance()
@@ -277,7 +296,7 @@ public class Vision extends SubsystemBase {
           VecBuilder.fill(xyStandardDeviation, xyStandardDeviation, thetaStandardDeviation));
     }
 
-    actualPosesUsedInPoseEstimator.add(newCalculatedRobotPose);
+    // actualPosesUsedInPoseEstimator.add(newCalculatedRobotPose);
 
     return new VisionProcessingLoggedFields(
         VisionProcessingStatus.SUCCESSFUL,
