@@ -3,7 +3,6 @@ package frc.lib.team2930.vision;
 import edu.wpi.first.apriltag.AprilTag;
 import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.math.VecBuilder;
-import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Transform3d;
@@ -128,7 +127,7 @@ public class Vision extends SubsystemBase {
     Logger.getInstance().recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
 
     // FIXME: for now log global position estimate here 
-    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getInstance().getEstimatedPosition());
+    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getEstimatedPosition());
 
 
   }
@@ -169,7 +168,7 @@ public class Vision extends SubsystemBase {
     Logger.getInstance().recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
 
     // FIXME: for now log global position estimate here 
-    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getInstance().getEstimatedPosition());
+    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getEstimatedPosition());
 
     // isConnected
     // clean logging
@@ -179,8 +178,8 @@ public class Vision extends SubsystemBase {
     PhotonPipelineResult cameraResult;
     double currentResultTimeStamp;
 
-    SwerveDrivePoseEstimator globalPoseEstimator = RobotOdometry.getInstance().getPoseEstimator();
-    Pose2d prevEstimatedRobotPose = globalPoseEstimator.getEstimatedPosition();
+    //SwerveDrivePoseEstimator globalPoseEstimator = RobotOdometry.getInstance().getPoseEstimator();
+    Pose2d prevEstimatedRobotPose = RobotOdometry.getEstimatedPosition();
 
     Pose3d newCalculatedRobotPose;
 
@@ -289,12 +288,12 @@ public class Vision extends SubsystemBase {
     xyStandardDeviation = calculateStandardDeviation(xyStdDevCoefficient.get(), distanceFromTag, numTargetsSeen);
     thetaStandardDeviation = calculateStandardDeviation(thetaStdDevCoefficient.get(), distanceFromTag, numTargetsSeen);
 
-    synchronized (globalPoseEstimator) {
-      globalPoseEstimator.addVisionMeasurement(
+
+     RobotOdometry.addVisionMeasurement(
           newCalculatedRobotPose.toPose2d(),
           currentResultTimeStamp,
           VecBuilder.fill(xyStandardDeviation, xyStandardDeviation, thetaStandardDeviation));
-    }
+ 
 
     // actualPosesUsedInPoseEstimator.add(newCalculatedRobotPose);
 
