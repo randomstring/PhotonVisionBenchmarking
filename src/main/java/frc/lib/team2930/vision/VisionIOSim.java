@@ -23,6 +23,7 @@ public class VisionIOSim implements VisionIO {
   private static final double MIN_TARGET_AREA =
       500.0; // change if width/height changes //TODO: Find a good number for this
   private final PhotonCamera camera;
+  private Vision vision = null;
 
   private double lastTimestamp = 0;
   private PhotonPipelineResult lastResult = new PhotonPipelineResult();
@@ -97,5 +98,10 @@ public class VisionIOSim implements VisionIO {
   @Override
   public PhotonCamera getCamera() {
     return camera;
+  }
+
+  @Override
+  public void setVision(Vision vision) {
+    this.vision = vision;
   }
 }

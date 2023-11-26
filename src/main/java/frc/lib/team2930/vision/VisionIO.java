@@ -44,4 +44,7 @@ public interface VisionIO {
     System.out.println("------default getCamera() == null  ------------");
     return null;
   }
+
+  public default void setVision(Vision vision) {}
+
 }
