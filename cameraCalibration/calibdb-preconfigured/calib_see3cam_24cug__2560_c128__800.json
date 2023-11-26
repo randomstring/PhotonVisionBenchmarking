@@ -1,0 +1,38 @@
+{
+    "camera": "See3CAM_24CUG (2560:c128)",
+    "platform": "Windows NT 10.0; Win64; x64",
+    "avg_reprojection_error": 0.17085684223371278,
+    "camera_matrix": [
+        [
+            578.2214166181216,
+            0,
+            411.86964612948833
+        ],
+        [
+            0,
+            578.6702596373797,
+            318.98160683785557
+        ],
+        [
+            0,
+            0,
+            1
+        ]
+    ],
+    "distortion_coefficients": [
+        -0.34591884031554826,
+        0.14428823416060926,
+        -0.000053338242309637344,
+        0.00007955936668180248,
+        -0.03105869911920769
+    ],
+    "distortion_model": "rectilinear",
+    "img_size": [
+        800,
+        600
+    ],
+    "calibration_time": "Sun, 26 Nov 2023 00:50:44 GMT",
+    "caveats": [
+        "cropped"
+    ]
+}
