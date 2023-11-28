@@ -27,4 +27,8 @@ There are a couple ways to do this as documented on the Photonvision site.
   2. Cameras: Arducam OV9281, Arducam OV2311, See3CAM_24CUG, Pi camera (cable)
   3. Resolutions 1280x720,800x600,640x480
   4. record FPS, latency, power usage, accuracy
-  
+
+
+  # Hints, Clues, Reminders
+
+   PhotonVision logs and config are in `/opt/photonvision/photonvision_config/`
