@@ -11,6 +11,7 @@ import org.photonvision.PhotonCamera;
 import org.photonvision.targeting.PhotonPipelineResult;
 
 public class VisionIOPhotonVision implements VisionIO {
+  private Vision vision = null;
   private Alert noCameraConnectedAlert =
       new Alert("specified camera not connected", AlertType.WARNING);
   private final PhotonCamera camera;
@@ -20,7 +21,7 @@ public class VisionIOPhotonVision implements VisionIO {
 
   public VisionIOPhotonVision(String cameraName) {
     camera = new PhotonCamera(cameraName);
-    NetworkTableInstance inst = NetworkTableInstance.getDefault();
+    NetworkTableInstance nt = NetworkTableInstance.getDefault();
 
     camera.setDriverMode(false);
 
@@ -29,19 +30,23 @@ public class VisionIOPhotonVision implements VisionIO {
      * and https://github.com/Mechanical-Advantage/RobotCode2022/blob/main/src/main/java/frc/robot/subsystems/vision/VisionIOPhotonVision.java
      */
     DoubleArraySubscriber targetPoseSub =
-        inst.getTable("/photonvision/" + cameraName)
+        nt.getTable("/photonvision/" + cameraName)
             .getDoubleArrayTopic("targetPose")
             .subscribe(new double[0]);
 
-    inst.addListener(
+    nt.addListener(
         targetPoseSub,
         EnumSet.of(NetworkTableEvent.Kind.kValueAll),
         event -> {
           PhotonPipelineResult result = camera.getLatestResult();
           double timestamp = Timer.getFPGATimestamp() - (result.getLatencyMillis() / 1000.0);
           synchronized (VisionIOPhotonVision.this) {
-            lastTimestamp = timestamp;
-            lastResult = result;
+            if (timestamp > lastTimestamp) {
+              lastTimestamp = timestamp;
+              lastResult = result;
+              vision.processCameraVisionUpdateByName(cameraName);
+              System.out.println("processing: " + cameraName);
+            }
           }
         });
   }
@@ -59,4 +64,9 @@ public class VisionIOPhotonVision implements VisionIO {
   public PhotonCamera getCamera() {
     return camera;
   }
+
+  public void setVision(Vision vision) {
+    this.vision = vision;
+  }
+
 }
