@@ -1,0 +1,72 @@
+package frc.lib.team2930.vision;
+
+import edu.wpi.first.networktables.DoubleArraySubscriber;
+import edu.wpi.first.networktables.NetworkTableEvent;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.wpilibj.Timer;
+import frc.lib.team6328.util.Alert;
+import frc.lib.team6328.util.Alert.AlertType;
+import java.util.EnumSet;
+import org.photonvision.PhotonCamera;
+import org.photonvision.targeting.PhotonPipelineResult;
+
+public class VisionIOPhotonVision implements VisionIO {
+  private Vision vision = null;
+  private Alert noCameraConnectedAlert =
+      new Alert("specified camera not connected", AlertType.WARNING);
+  private final PhotonCamera camera;
+
+  private double lastTimestamp = 0;
+  private PhotonPipelineResult lastResult = new PhotonPipelineResult();
+
+  public VisionIOPhotonVision(String cameraName) {
+    camera = new PhotonCamera(cameraName);
+    NetworkTableInstance nt = NetworkTableInstance.getDefault();
+
+    camera.setDriverMode(false);
+
+    /*
+     * based on https://docs.wpilib.org/en/latest/docs/software/networktables/listening-for-change.html#listening-for-changes
+     * and https://github.com/Mechanical-Advantage/RobotCode2022/blob/main/src/main/java/frc/robot/subsystems/vision/VisionIOPhotonVision.java
+     */
+    DoubleArraySubscriber targetPoseSub =
+        nt.getTable("/photonvision/" + cameraName)
+            .getDoubleArrayTopic("targetPose")
+            .subscribe(new double[0]);
+
+    nt.addListener(
+        targetPoseSub,
+        EnumSet.of(NetworkTableEvent.Kind.kValueAll),
+        event -> {
+          PhotonPipelineResult result = camera.getLatestResult();
+          double timestamp = Timer.getFPGATimestamp() - (result.getLatencyMillis() / 1000.0);
+          synchronized (VisionIOPhotonVision.this) {
+            if (timestamp > lastTimestamp) {
+              lastTimestamp = timestamp;
+              lastResult = result;
+              vision.processCameraVisionUpdateByName(cameraName);
+              System.out.println("processing: " + cameraName);
+            }
+          }
+        });
+  }
+
+  @Override
+  public synchronized void updateInputs(VisionIOInputs inputs) {
+    inputs.lastTimestamp = this.lastTimestamp;
+    inputs.lastResult = this.lastResult;
+    inputs.connected = camera.isConnected();
+
+    noCameraConnectedAlert.set(!camera.isConnected());
+  }
+
+  @Override
+  public PhotonCamera getCamera() {
+    return camera;
+  }
+
+  public void setVision(Vision vision) {
+    this.vision = vision;
+  }
+
+}
