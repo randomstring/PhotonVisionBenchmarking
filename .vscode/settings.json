@@ -25,13 +25,5 @@
       }
     },
   ],
-  "java.test.defaultConfig": "WPIlibUnitTests",
-  "cSpell.words": [
-    "APRILTAG",
-    "CTRE",
-    "DEADBAND",
-    "Odometry",
-    "TRACKWIDTH",
-    "wpilibj"
-  ]
+  "java.test.defaultConfig": "WPIlibUnitTests"
 }

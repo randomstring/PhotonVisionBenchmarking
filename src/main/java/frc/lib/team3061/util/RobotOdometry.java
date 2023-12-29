@@ -60,8 +60,8 @@ public class RobotOdometry {
       uc = RobotOdometry.updateCount++;
     }
 
-    Logger.getInstance().recordOutput("RobotOdometry/elapsedTime", Timer.getFPGATimestamp() - startTime);
-    Logger.getInstance().recordOutput("RobotOdometry/updateCount", uc);
+    Logger.recordOutput("RobotOdometry/elapsedTime", Timer.getFPGATimestamp() - startTime);
+    Logger.recordOutput("RobotOdometry/updateCount", uc);
 
   }
 

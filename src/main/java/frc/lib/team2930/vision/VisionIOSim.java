@@ -12,8 +12,9 @@ import edu.wpi.first.wpilibj.Timer;
 import java.util.EnumSet;
 import java.util.function.Supplier;
 import org.photonvision.PhotonCamera;
-import org.photonvision.SimVisionSystem;
-import org.photonvision.SimVisionTarget;
+import org.photonvision.estimation.TargetModel;
+import org.photonvision.simulation.VisionSystemSim;
+import org.photonvision.simulation.VisionTargetSim;
 import org.photonvision.targeting.PhotonPipelineResult;
 
 public class VisionIOSim implements VisionIO {
@@ -29,7 +30,7 @@ public class VisionIOSim implements VisionIO {
   private PhotonPipelineResult lastResult = new PhotonPipelineResult();
 
   private Supplier<Pose2d> poseSupplier;
-  private SimVisionSystem simVision;
+  private VisionSystemSim simVision;
   private AprilTagFieldLayout layout;
 
   public VisionIOSim(
@@ -43,14 +44,17 @@ public class VisionIOSim implements VisionIO {
     this.poseSupplier = poseSupplier;
     this.layout = layout;
     this.simVision =
-        new SimVisionSystem(
-            networkName,
-            DIAGONAL_FOV,
-            robotToCamera, // .inverse(),
-            18000, // TODO: FIND A GOOD NUMBER FOR THIS
-            IMG_WIDTH,
-            IMG_HEIGHT,
-            MIN_TARGET_AREA);
+        new VisionSystemSim(networkName);
+
+        // FIXME: figure out how to set these settings
+        // new VisionSystemSim(
+        //     networkName,
+        //     DIAGONAL_FOV,
+        //     robotToCamera, // .inverse(),
+        //     18000, // TODO: FIND A GOOD NUMBER FOR THIS
+        //     IMG_WIDTH,
+        //     IMG_HEIGHT,
+        //     MIN_TARGET_AREA);
 
     updateSimInputs();
 
@@ -80,7 +84,8 @@ public class VisionIOSim implements VisionIO {
 
   @Override
   public synchronized void updateInputs(VisionIOInputs inputs) {
-    this.simVision.processFrame(poseSupplier.get());
+    // FIXME: figure out how this works in new 2024 code
+    // this.simVision.processFrame(poseSupplier.get());
 
     inputs.lastTimestamp = this.lastTimestamp;
     inputs.lastResult = this.lastResult;
@@ -90,8 +95,9 @@ public class VisionIOSim implements VisionIO {
   private void updateSimInputs() {
     this.simVision.clearVisionTargets();
     for (AprilTag tag : layout.getTags()) {
-      this.simVision.addSimVisionTarget(
-          new SimVisionTarget(tag.pose, Units.inchesToMeters(6), Units.inchesToMeters(6), tag.ID));
+      this.simVision.addVisionTargets(
+        // TODO: set the correct AprilTag type
+        new VisionTargetSim(tag.pose, TargetModel.kAprilTag16h5));
     }
   }
 

@@ -67,14 +67,13 @@ public class Vision extends SubsystemBase {
 
     // log all robotToCamera constants, useful for cameraOverride view mode in advantage scope
     for (CameraResultProcessingPackage cameraPackage : allCameraResultProcessingPackages) {
-      Logger.getInstance()
-          .recordOutput(
+      Logger.recordOutput(
               "Vision/" + cameraPackage.name + "CameraConstant",
               new Pose3d().transformBy(cameraPackage.RobotToCamera));
     }
 
     for (AprilTag tag : aprilTagLayout.getTags()) {
-      Logger.getInstance().recordOutput("Vision/AllAprilTags3D/" + tag.ID, tag.pose);
+      Logger.recordOutput("Vision/AllAprilTags3D/" + tag.ID, tag.pose);
     }
 
     aprilTagLayout.getTags().forEach((AprilTag tag) -> lastTagDetectionTimes.put(tag.ID, -1.0));
@@ -97,8 +96,7 @@ public class Vision extends SubsystemBase {
 
   public void processCameraVisionUpdate(CameraResultProcessingPackage cameraPackage) {
       cameraPackage.visionIO.updateInputs(cameraPackage.visionIOInputs);
-      Logger.getInstance()
-          .processInputs("Vision/" + cameraPackage.name, cameraPackage.visionIOInputs);
+      Logger.processInputs("Vision/" + cameraPackage.name, cameraPackage.visionIOInputs);
 
     boolean processVision = true;
     if (!useVisionForPoseEstimation) {
@@ -123,15 +121,14 @@ public class Vision extends SubsystemBase {
     // log the poses used in the latest updates
  
 
-    Logger.getInstance().recordOutput("Vision/useVision", useVisionForPoseEstimation);
-    Logger.getInstance()
-        .recordOutput(
+    Logger.recordOutput("Vision/useVision", useVisionForPoseEstimation);
+    Logger.recordOutput(
             "Vision/useMaxDistanceAwayFromExistingEstimate",
             useMaxDistanceAwayFromExistingEstimate);
-    Logger.getInstance().recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
+    Logger.recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
 
     // FIXME: for now log global position estimate here 
-    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getEstimatedPosition());
+    Logger.recordOutput("Vision/robotPose", RobotOdometry.getEstimatedPosition());
 
   }
 
@@ -148,14 +145,12 @@ public class Vision extends SubsystemBase {
       }
     }
 
-    Logger.getInstance()
-        .recordOutput(
+    Logger.recordOutput(
             "Vision/currentVisibleTags_EXACT_MOMENT",
             allAtThisVeryMomentVisibleTags.toArray(
                 new Pose3d[allAtThisVeryMomentVisibleTags.size()]));
 
-    Logger.getInstance()
-        .recordOutput(
+    Logger.recordOutput(
             "Vision/actual_poses_used_in_pose_estimator",
             actualPosesUsedInPoseEstimator.toArray(
                 new Pose3d[actualPosesUsedInPoseEstimator.size()]));
@@ -163,15 +158,14 @@ public class Vision extends SubsystemBase {
     // clear poses after we log them
     actualPosesUsedInPoseEstimator.clear();
 
-    Logger.getInstance().recordOutput("Vision/useVision", useVisionForPoseEstimation);
-    Logger.getInstance()
-        .recordOutput(
+    Logger.recordOutput("Vision/useVision", useVisionForPoseEstimation);
+    Logger.recordOutput(
             "Vision/useMaxDistanceAwayFromExistingEstimate",
             useMaxDistanceAwayFromExistingEstimate);
-    Logger.getInstance().recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
+    Logger.recordOutput("Vision/useMaxPitchRoll", useMaxPitchRoll);
 
     // FIXME: for now log global position estimate here 
-    Logger.getInstance().recordOutput("Vision/robotPose", RobotOdometry.getEstimatedPosition());
+    Logger.recordOutput("Vision/robotPose", RobotOdometry.getEstimatedPosition());
 
     // isConnected
     // clean logging
@@ -334,32 +328,30 @@ public class Vision extends SubsystemBase {
 
     var fieldsToLog = cameraPackage.loggedFields;
 
-    Logger logger = Logger.getInstance();
-
-    logger.recordOutput(
+    Logger.recordOutput(
         ROOT_TABLE_PATH + "*STATUS",
         fieldsToLog.status().name() + ": " + fieldsToLog.status().logOutput);
 
-    logger.recordOutput(ROOT_TABLE_PATH + "calculated_robotPose_3d", fieldsToLog.robotPose3d());
-    logger.recordOutput(
+    Logger.recordOutput(ROOT_TABLE_PATH + "calculated_robotPose_3d", fieldsToLog.robotPose3d());
+    Logger.recordOutput(
         ROOT_TABLE_PATH + "calculated_robotPose_2d", fieldsToLog.robotPose3d().toPose2d());
-    logger.recordOutput(ROOT_TABLE_PATH + "camera_pose_3d", fieldsToLog.cameraPose());
-    logger.recordOutput(ROOT_TABLE_PATH + "num_seen_targets", fieldsToLog.numSeenTargets());
-    logger.recordOutput(ROOT_TABLE_PATH + "processed_timestamp", fieldsToLog.processedTimeStamp());
-    logger.recordOutput(
+    Logger.recordOutput(ROOT_TABLE_PATH + "camera_pose_3d", fieldsToLog.cameraPose());
+    Logger.recordOutput(ROOT_TABLE_PATH + "num_seen_targets", fieldsToLog.numSeenTargets());
+    Logger.recordOutput(ROOT_TABLE_PATH + "processed_timestamp", fieldsToLog.processedTimeStamp());
+    Logger.recordOutput(
         ROOT_TABLE_PATH + "distance_from_existing_pose_estimate",
         fieldsToLog.distanceFromExistingPoseEstimate());
-    logger.recordOutput(ROOT_TABLE_PATH + "distance_from_tag", fieldsToLog.distanceFromTag());
-    logger.recordOutput(ROOT_TABLE_PATH + "tag_ambiguity", fieldsToLog.tagAmbiguity());
-    logger.recordOutput(
+    Logger.recordOutput(ROOT_TABLE_PATH + "distance_from_tag", fieldsToLog.distanceFromTag());
+    Logger.recordOutput(ROOT_TABLE_PATH + "tag_ambiguity", fieldsToLog.tagAmbiguity());
+    Logger.recordOutput(
         ROOT_TABLE_PATH + "xy_standard_deviation", fieldsToLog.xyStandardDeviation());
-    logger.recordOutput(
+    Logger.recordOutput(
         ROOT_TABLE_PATH + "theta_standard_deviation", fieldsToLog.thetaStandardDeviation());
 
     boolean addedVisionEstimateToPoseEstimator =
         (fieldsToLog.status().equals(VisionProcessingStatus.SUCCESSFUL)) ? true : false;
 
-    logger.recordOutput(
+    Logger.recordOutput(
         ROOT_TABLE_PATH + "added_vision_measurement_to_pose_estimator(AKA SUCCESSFUL?)",
         addedVisionEstimateToPoseEstimator);
   }
@@ -396,7 +388,7 @@ public class Vision extends SubsystemBase {
 
       this.photonPoseEstimator =
           new PhotonPoseEstimator(
-              aprilTagFieldLayout, PoseStrategy.MULTI_TAG_PNP, visionIO.getCamera(), RobotToCamera);
+              aprilTagFieldLayout, PoseStrategy.MULTI_TAG_PNP_ON_COPROCESSOR, visionIO.getCamera(), RobotToCamera);
       photonPoseEstimator.setMultiTagFallbackStrategy(PoseStrategy.CLOSEST_TO_REFERENCE_POSE);
 
       lastProcessedResultTimeStamp = 0.0;

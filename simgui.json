@@ -1,0 +1,42 @@
+{
+  "NTProvider": {
+    "types": {
+      "/FMSInfo": "FMSInfo",
+      "/SmartDashboard/Auto Choices": "String Chooser"
+    }
+  },
+  "NetworkTables": {
+    "transitory": {
+      "AdvantageKit": {
+        "RealOutputs": {
+          "Vision": {
+            "AllAprilTags3D": {
+              "open": true
+            }
+          },
+          "open": true
+        },
+        "Vision": {
+          "testCamera": {
+            "open": true
+          }
+        },
+        "open": true
+      },
+      "SmartDashboard": {
+        "TunableNumbers": {
+          "open": true,
+          "vision": {
+            "open": true
+          }
+        }
+      },
+      "photonvision": {
+        "See3CAM_24CUG": {
+          "open": true
+        },
+        "open": true
+      }
+    }
+  }
+}
