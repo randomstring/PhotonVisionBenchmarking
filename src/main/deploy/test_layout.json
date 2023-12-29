@@ -1,12 +1,12 @@
 {
   "tags": [
     {
-      "ID": 2,
+      "ID": 6,
       "pose": {
         "translation": {
           "x": 0.0,
-          "y": 1.0,
-          "z": 0.1397
+          "y": 3.0,
+          "z": 1.14
         },
         "rotation": {
           "quaternion": {
@@ -19,12 +19,12 @@
       }
     },
     {
-      "ID": 3,
+      "ID": 5,
       "pose": {
         "translation": {
           "x": 0.0,
-          "y": 2.2192,
-          "z": 0.1397
+          "y": 4.0,
+          "z": 1.14
         },
         "rotation": {
           "quaternion": {
@@ -37,12 +37,12 @@
       }
     },
     {
-      "ID": 4,
+      "ID": 7,
       "pose": {
         "translation": {
           "x": 0.0,
-          "y": 3.4384,
-          "z": 0.1397
+          "y": 4.0,
+          "z": 1.841
         },
         "rotation": {
           "quaternion": {
