@@ -13,6 +13,7 @@ public class Drive extends SubsystemBase {
   public static final double WHEEL_RADIUS_METERS = Units.inchesToMeters(3.0);
 
   private final DriveIO io;
+  // FIXME: class name changed? Can't find documentation for DriveIOInputsAutoLogged
   private final DriveIOInputsAutoLogged inputs = new DriveIOInputsAutoLogged();
   private final DifferentialDriveOdometry odometry = new DifferentialDriveOdometry(new Rotation2d(), 0.0, 0.0);
 
