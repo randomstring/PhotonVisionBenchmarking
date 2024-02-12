@@ -20,12 +20,12 @@ If you are running more than one of the Arducam cameras on the same host, you wi
 
 # Camera Calibration
 
-There are a couple ways to do this as documented on the Photonvision site. 
+There are a couple ways to do this as documented on the PhotonVision site. 
 
 # Plan to Record
   1. Coprocessors (OrangePi 5, Raspberry Pi 5, Raspberry pi 4, Windows i7-770)
   2. Cameras: Arducam OV9281, Arducam OV2311, See3CAM_24CUG, Pi camera (cable)
-  3. Resolutions 1280x720,800x600,640x480
+  3. Resolutions 1280x720, 800x600, 640x480
   4. record FPS, latency, power usage, accuracy
 
 
